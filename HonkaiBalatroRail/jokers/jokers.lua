@@ -1,4 +1,3 @@
-
 -- you can have shared helper functions
 function shakecard(self) --visually shake a card
     G.E_MANAGER:add_event(Event({
@@ -511,4 +510,110 @@ SMODS.Joker{ --Asta
         end
     end
 end
+}
+
+SMODS.Joker {
+    name = "Clara",
+    key = "clara",
+    config = { },
+    loc_txt = {
+        ['name'] = 'Clara',
+        ['text'] = {
+            [1] = '{C:attention}Steel Cards{} provide',
+            [2] = '{X:mult,C:white}X2{} Mult instead',
+            [3] = 'of {X:mult,C:white}X1.5{} Mult',
+        }
+    },
+    pos = {x = 0, y = 0},
+    cost = 4,
+    rarity = 2,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+    atlas = 'sample_wee',
+
+    add_to_deck = function(self, card)
+        G.P_CENTERS.m_steel.config.h_x_mult = 2.0
+        for _, playing_card in pairs(G.playing_cards or {}) do
+            if SMODS.get_enhancements(playing_card)["m_steel"] == true then
+                playing_card.ability.h_x_mult = 2.0
+            end
+        end
+    end,
+
+    remove_from_deck = function(self, card)
+        local other_clara_exists = false
+        for _, j in ipairs(G.jokers.cards) do
+            if j.ability and j.ability.key and j.ability.key == 'clara' and j ~= self then
+                other_clara_exists = true
+                break
+            end
+        end
+
+        if not other_clara_exists then
+            G.P_CENTERS.m_steel.config.h_x_mult = 1.5
+            for _, playing_card in pairs(G.playing_cards or {}) do
+                if SMODS.get_enhancements(playing_card)["m_steel"] == true then
+                    playing_card.ability.h_x_mult = 1.5
+                end
+            end
+        end
+    end,
+
+    calculate = nil
+}
+
+SMODS.Joker {
+    name = "Boothill",
+    key = "boothill",
+    config = { },
+    loc_txt = {
+        ['name'] = 'Boothill',
+        ['text'] = {
+            [1] = 'Adds rank of each card',
+            [2] = 'played that was not',
+            [3] = 'scored to {C:mult}Mult{}'
+        }
+    },
+    pos = {x = 0, y = 0},
+    cost = 4,
+    rarity = 1,
+    blueprint_compat = true,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+    atlas = 'sample_wee',
+
+    -- No loc_vars needed for this version
+    loc_vars = nil,
+
+    -- This function runs during the score calculation
+    calculate = function(self, card, context)
+        if context.joker_main and context.cardarea == G.jokers then
+            local mult_to_add = 0
+            
+            local scored_cards_lookup = {}
+            for _, scored_card in ipairs(context.scoring_hand) do
+                scored_cards_lookup[scored_card:get_id()] = true
+            end
+
+            -- Iterate through the full hand and check against the lookup table.
+            if context.full_hand then
+                for _, card_in_hand in ipairs(context.full_hand) do
+                    -- Check if the card's ID is in our lookup table.
+                    if not scored_cards_lookup[card_in_hand:get_id()] then
+                        mult_to_add = mult_to_add + card_in_hand.base.nominal
+                    end
+                end
+            end
+
+            if mult_to_add > 0 then
+                return {
+                    mult = mult_to_add
+                    -- message = localize{type='variable',key='a_mult',vars={mult_to_add}}
+                }
+            end
+        end
+    end
 }
