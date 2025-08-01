@@ -113,7 +113,7 @@ SMODS.Joker{ --Blade
     loc_txt = {
         ['name'] = 'Blade',
         ['text'] = {
-            [1] = 'Gain {C:red}+4{} for each card destroyed.',
+            [1] = 'Gain {C:red}+4{} for each card destroyed',
             [2] = '{C:inactive}(Currently {}{C:mult}+#1#{}{C:inactive} Mult){}'
         }
     },
@@ -139,12 +139,15 @@ SMODS.Joker{ --Blade
                     func = function()
                     card.ability.extra.bladeMult = (card.ability.extra.bladeMult) + 4 * #context.removed
                     return true
-                end
+                end,
+                message = 'Upgraded!',
+				colour = G.C.MULT,
+				card = card
                 }
         end
         if context.cardarea == G.jokers and context.joker_main then
                 return {
-                    mult = card.ability.extra.bladeMult
+                    mult = card.ability.extra.bladeMult,
                 }
         end
     end
@@ -227,6 +230,16 @@ SMODS.Joker{ --Welt
     discovered = true,
     atlas = 'sample_wee',
 
+    in_pool = function(self, args)
+        for _, card in ipairs(G.playing_cards) do
+            if (card.ability and card.ability.effect and card.ability.effect.type == 'enhancement')
+                or (card.ability and card.ability.set == 'Enhanced') then
+                return true
+            end
+        end
+        return false
+    end,
+
     calculate = function(self, card, context)
         if context.individual and context.cardarea == G.play and not context.blueprint then
             if (function()
@@ -272,6 +285,16 @@ SMODS.Joker{ --Himeko
     unlocked = true,
     discovered = true,
     atlas = 'sample_wee',
+
+    in_pool = function(self, args)
+        for _, card in ipairs(G.playing_cards) do
+            if (card.ability and card.ability.effect and card.ability.effect.type == 'enhancement')
+                or (card.ability and card.ability.set == 'Enhanced') then
+                return true
+            end
+        end
+        return false
+    end,
 
     calculate = function(self, card, context)
         if context.individual and context.cardarea == G.play and not context.blueprint then
@@ -319,15 +342,17 @@ SMODS.Joker{ --Dan Heng
     discovered = true,
     atlas = 'sample_wee',
 
-    can_spawn = function()
+    in_pool = function(self, args)
         for _, card in ipairs(G.playing_cards) do
-            if card.ability and card.ability.effect and card.ability.effect.type == 'enhancement' then
+            if (card.ability and card.ability.effect and card.ability.effect.type == 'enhancement')
+                or (card.ability and card.ability.set == 'Enhanced') then
                 return true
             end
         end
         return false
     end,
 
+    
     calculate = function(self, card, context)
         if context.individual and context.cardarea == G.play and not context.blueprint then
             if (function()
@@ -467,15 +492,16 @@ SMODS.Joker{ --Asta
     key = "asta",
     config = {
         extra = {
-            odds = 3,
+            astaodds = 3,
             levels = 1
         }
     },
+
     loc_txt = {
         ['name'] = 'Asta',
         ['text'] = {
             [1] = '{C:planet}Planet{} cards have a',
-            [2] = '{C:green}1 in 3{} chance to ',
+            [2] = '{C:green}#1# in #2#{} chance to ',
             [3] = 'trigger again',
             [4] = ''
         }
@@ -492,23 +518,38 @@ SMODS.Joker{ --Asta
     discovered = true,
     atlas = 'sample_wee',
 
+    loc_vars = function(self, info_queue, card)
+        card.ability.extra = card.ability.extra or {}
+        card.ability.extra.astaodds = card.ability.extra.astaodds or self.config.extra.astaodds
+        return { vars = { (G.GAME.probabilities.normal or 1), card.ability.extra.astaodds } }
+    end,
+
     calculate = function(self, card, context)
-    if context.using_consumeable and not context.blueprint then
-        if context.consumeable and context.consumeable.ability.set == 'Planet' then
-            if pseudorandom('asta_' .. tostring(G.GAME.round_resets or G.GAME.round or 0), 1, card.ability.extra.odds) == 1 then
-                local target_hand = context.consumeable.ability.hand_type or "High Card"
+        card.ability.extra = card.ability.extra or {}
+        card.ability.extra.astaodds = card.ability.extra.astaodds or self.config.extra.astaodds
+        card.ability.extra.levels = card.ability.extra.levels or self.config.extra.levels
 
-                SMODS.calculate_effect({
-                    level_up = card.ability.extra.levels,
-                    level_up_hand = target_hand
-                }, card)
+        if context.using_consumeable and not context.blueprint and not context.repetition then
+            if context.consumeable and context.consumeable.ability.set == 'Planet' then
+                local odds = (G.GAME.probabilities.normal or 1) / card.ability.extra.astaodds
+                -- Use a float between 0 and 1 for the roll
+                local roll = pseudorandom('asta', 0, 10000) / 10000
 
-                card_eval_status_text(context.blueprint_card or card, 'extra', nil, nil, nil, {
-                    message = localize('k_level_up_ex'),
-                    colour = G.C.RED
-                })
+                if roll < odds then
+                    local target_hand = context.consumeable.ability.hand_type or "High Card"
+
+                    SMODS.calculate_effect({
+                        level_up = card.ability.extra.levels,
+                        level_up_hand = target_hand
+                    }, card)
+
+                    card_eval_status_text(context.blueprint_card or card, 'extra', nil, nil, nil, {
+                        message = localize('k_level_up_ex'),
+                        colour = G.C.RED
+                    })
+                end
             end
         end
     end
-end
 }
+
