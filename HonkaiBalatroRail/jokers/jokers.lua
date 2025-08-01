@@ -109,6 +109,7 @@ SMODS.Joker{ --Blade
             bladeMult = 0
         }
     },
+    
     loc_txt = {
         ['name'] = 'Blade',
         ['text'] = {
@@ -614,6 +615,62 @@ SMODS.Joker {
                     -- message = localize{type='variable',key='a_mult',vars={mult_to_add}}
                 }
             end
+        end
+    end
+}
+
+SMODS.Joker{
+    name = "Sparkle",
+    key = "sparkle",
+    config = {},
+    loc_txt = {
+        ['name'] = 'Sparkle',
+        ['text'] = {
+            "When round begins,",
+            "become a copy of a",
+            "random different",
+            "{C:rare}Rare{} Joker until end of round"
+        }
+    },
+    pos = {x = 0, y = 0},
+    cost = 6,
+    rarity = 1,
+    blueprint_compat = false,
+    eternal_compat = true,
+    unlocked = true,
+    discovered = true,
+    atlas = 'sample_wee',
+
+    calculate = function(self, card, context)
+        if context.ending_shop and not context.blueprint and not card.ability.is_sparkle_disguise then
+            return {
+                func = function()
+                    -- Create a pool of all Rare jokers, excluding Sparkle itself.
+                    local rare_joker_pool = {}
+                    for _, joker_center in ipairs(G.P_JOKER_RARITY_POOLS[3]) do
+                        if joker_center.key ~= 'sparkle' then
+                            table.insert(rare_joker_pool, joker_center)
+                        end
+                    end
+
+                    if #rare_joker_pool > 0 then
+                        -- Select a random joker from the pool.
+                        local new_joker_center = pseudorandom_element(rare_joker_pool, pseudoseed('sparkle_transform'..G.GAME.round_resets.ante))
+                        
+                        card.ability.original_center = self
+                        card.ability.is_sparkle_disguise = true
+                        
+                        card:set_ability(new_joker_center, true)
+
+                        -- Add visual/audio feedback for the transformation.
+                        card:juice_up(1, 0.5)
+                        play_sound('tarot2')
+                    end
+                    return true
+                end,
+                message = "Transforming...",
+                colour = G.C.RARE
+            }
         end
     end
 }
